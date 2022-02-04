@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "628846015702",
+    "project_id": "social-app-f46fd",
+    "storage_bucket": "social-app-f46fd.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:628846015702:android:bf43f09bb21201b1620577",
+        "android_client_info": {
+          "package_name": "eg.edu.asu.cis.social_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "628846015702-1ttub0k019c9c2rqlh0h9ja5sqf2ojcm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "eg.edu.asu.cis.social_app",
+            "certificate_hash": "42f4b2ccd99bacfa5dcf81b8940c6d819a0a6e54"
+          }
+        },
+        {
+          "client_id": "628846015702-tahgisaauu6fj71t2gonka2qm67f3e3n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRRRIvd9QgpHa53y8d6fwa57eow4wRV6Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "628846015702-tahgisaauu6fj71t2gonka2qm67f3e3n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
