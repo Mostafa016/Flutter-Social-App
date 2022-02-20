@@ -33,7 +33,6 @@ class WritePostScreen extends StatelessWidget {
               onPressed: () async {
                 await AppCubit.get(context)
                     .createPost(textContentController: textContentController);
-                print('Already here');
                 if (!AppCubit.get(context).isPostEmpty) {
                   Navigator.pop(context);
                 }

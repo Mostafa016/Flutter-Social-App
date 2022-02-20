@@ -7,11 +7,27 @@ import 'package:social_app/shared/bloc_observer.dart';
 import 'package:social_app/shared/components/constants.dart';
 import 'package:social_app/shared/cubit/cubit.dart';
 import 'package:social_app/shared/network/local/cache_helper.dart';
+import 'package:social_app/shared/network/remote/dio_helper.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print('onBackgroundMessage');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  print(await messaging.getToken());
+  FirebaseMessaging.onMessage.listen((event) {
+    print('onMessage');
+  });
+  FirebaseMessaging.onMessageOpenedApp.listen((event) {
+    print('onMessageOpenedApp');
+  });
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   Bloc.observer = MyBlocObserver();
+  DioHelper.init();
   await CacheHelper.init();
   uid = CacheHelper.getValue('uid');
   runApp(MyApp(

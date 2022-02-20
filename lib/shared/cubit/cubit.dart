@@ -1,3 +1,4 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
@@ -5,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:social_app/models/chat_room_model.dart';
 import 'package:social_app/models/post_model.dart';
 import 'package:social_app/models/user_model.dart';
-import 'package:social_app/modules/chats/chats_screen.dart';
+import 'package:social_app/modules/chats/all_chats_screen.dart';
+import 'package:social_app/modules/chats/chat_screen.dart';
 import 'package:social_app/modules/news_feed/news_feed_screen.dart';
 import 'package:social_app/modules/profile/profile_screen.dart';
 import 'package:social_app/modules/users/users_screen.dart';
@@ -18,6 +21,8 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'dart:io';
 
 import 'package:social_app/shared/network/local/cache_helper.dart';
+
+import '../../models/message_model.dart';
 
 enum ImageType {
   profile,
@@ -37,7 +42,7 @@ class AppCubit extends Cubit<AppState> {
   ]);
   final List<Widget> screens = List.unmodifiable([
     const NewsFeedScreen(),
-    const ChatsScreen(),
+    const AllChatsScreen(),
     WritePostScreen(),
     const UsersScreen(),
     const ProfileScreen(),
@@ -54,6 +59,13 @@ class AppCubit extends Cubit<AppState> {
   bool hasUserLoggedOut = false;
   var lastLoadedPostDoc;
   bool isPostEmpty = true;
+  // Chat
+  late List<ChatRoomModel> chatRooms;
+  late List<String> chatRoomImages;
+  late List<String> lastMessageSendersUID;
+  late List<String> receiverName;
+  late List<String> lastMessageTexts;
+  List<MessageModel> chatMessages = [];
 
   Future<void> _getUserData() async {
     emit(AppGetUserDataLoadingState());
@@ -71,8 +83,12 @@ class AppCubit extends Cubit<AppState> {
   void updateBottomNavBar({
     required int index,
     required BuildContext context,
-  }) {
-    if (index == 2) {
+  }) async {
+    if (index == 1) {
+      getChatRooms();
+      _bottomNavBarCurrentIndex = index;
+      emit(AppChangeBottomNavBarIndexState());
+    } else if (index == 2) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -261,7 +277,6 @@ class AppCubit extends Cubit<AppState> {
       postLikedByUser = [];
     }
     if (isRefresh) {
-      //print("Here");
       FirebaseFirestore.instance
           .collection('posts')
           .orderBy('dateTime', descending: true)
@@ -395,5 +410,118 @@ class AppCubit extends Cubit<AppState> {
   void getHomeLayoutData() async {
     await _getUserData();
     await _getNewsFeedPosts();
+  }
+
+  Future<void> getChatRooms() async {
+    chatRooms = [];
+    chatRoomImages = [];
+    lastMessageSendersUID = [];
+    receiverName = [];
+    lastMessageTexts = [];
+    chatMessages = [];
+
+    try {
+      var chatRoomsDocs = await FirebaseFirestore.instance
+          .collection('chatRooms')
+          .orderBy('lastMessageDateTime')
+          .get();
+      for (var chatRoomDoc in chatRoomsDocs.docs) {
+        chatRooms.add(ChatRoomModel.fromJson(chatRoomDoc.data()));
+        int receiverRefIndex =
+            chatRooms.last.users.first.id == userModel.uid ? 1 : 0;
+        var receiverDoc =
+            await chatRoomDoc.data()['users'][receiverRefIndex].get();
+        chatRoomImages.add(receiverDoc['image']);
+        var lastMessageDoc = await chatRoomDoc.data()['lastMessageRef'].get();
+        lastMessageSendersUID.add(lastMessageDoc.data()['senderID']);
+        lastMessageTexts.add(lastMessageDoc.data()['text']);
+        receiverName.add(receiverDoc['name']);
+      }
+      emit(AppGetChatRoomsSuccessState());
+    } catch (e) {
+      print(e.toString());
+      emit(AppGetChatRoomsErrorState());
+    }
+  }
+
+  Future<void> getChatMessages({
+    required int chatRoomIndex,
+  }) async {
+    FirebaseFirestore.instance
+        .collection('chatRooms')
+        .doc(chatRooms[chatRoomIndex].id)
+        .collection('messages')
+        .orderBy('dateTime')
+        .snapshots()
+        .listen((event) async {
+      var changedMessagesDocs = event.docChanges;
+      for (var changedMessagesDoc in changedMessagesDocs) {
+        chatMessages.insert(
+          0,
+          MessageModel.fromJson(changedMessagesDoc.doc.data()!),
+        );
+      }
+      lastMessageSendersUID[chatRoomIndex] =
+          changedMessagesDocs.last.doc.data()!['senderID'];
+      lastMessageTexts[chatRoomIndex] =
+          changedMessagesDocs.last.doc.data()!['text'];
+      emit(AppGetChatMessagesSuccessState());
+      if (chatMessages.isNotEmpty) {
+        AudioCache player = AudioCache(prefix: 'assets/audio/');
+        await player.play(
+          'message_sound.mp3',
+        );
+      }
+    });
+    /*try {
+      chatMessages = [];
+      print(chatRooms[chatRoomIndex].id);
+      var messagesDocs = await FirebaseFirestore.instance
+          .collection('chatRooms')
+          .doc(chatRooms[chatRoomIndex].id)
+          .collection('messages')
+          .orderBy('dateTime', descending: true)
+          .get();
+      print(messagesDocs.size);
+      for (var messagesDoc in messagesDocs.docs) {
+        chatMessages.add(MessageModel.fromJson(messagesDoc.data()));
+      }
+      //print(chatMessages);
+      emit(AppGetChatMessagesSuccessState());
+    } catch (e) {
+      print(e.toString());
+      emit(AppGetChatMessagesErrorState());
+    }*/
+  }
+
+  Future<void> sendMessage({
+    required int chatRoomIndex,
+    required String text,
+  }) async {
+    //TODO send message messes with its chatRoom document attributes
+    try {
+      var chatRoomDocRef = FirebaseFirestore.instance
+          .collection('chatRooms')
+          .doc(chatRooms[chatRoomIndex].id);
+      var newMessageDateTime = DateTime.now().toString();
+      var newMessageDocRef = await chatRoomDocRef.collection('messages').add(
+            MessageModel(
+              dateTime: newMessageDateTime,
+              senderID: userModel.uid,
+              text: text,
+            ).toMap(),
+          );
+      await chatRoomDocRef.update({'numOfMessages': FieldValue.increment(1)});
+      chatRooms[chatRoomIndex].numOfMessages++;
+      await chatRoomDocRef.update({
+        'lastMessageRef': newMessageDocRef,
+        'lastMessageDateTime': newMessageDateTime,
+      });
+      //await getChatMessages(chatRoomIndex: chatRoomIndex);
+      emit(AppSendChatMessageSuccessState());
+    } catch (e) {
+      print(e.toString());
+      emit(AppSendChatMessageErrorState());
+    }
   }
 }

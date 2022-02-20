@@ -50,6 +50,9 @@ dependencies:
   flutter_bloc: ^7.3.0
   bloc: ^7.2.0
   image_picker: ^0.8.4+2
+  audioplayers: ^0.20.1
+  dio: ^4.0.4
+  firebase_messaging: ^11.2.6
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +75,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/audio/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

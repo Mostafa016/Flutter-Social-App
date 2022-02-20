@@ -73,3 +73,21 @@ class AppChangeReactionOnPostErrorState extends AppState {
 }
 
 class AppRefreshLoadingState extends AppState {}
+
+class AppGetChatRoomsLoadingState extends AppState {}
+
+class AppGetChatRoomsSuccessState extends AppState {}
+
+class AppGetChatRoomsErrorState extends AppState {}
+
+class AppGetChatMessagesLoadingState extends AppState {}
+
+class AppGetChatMessagesSuccessState extends AppState {}
+
+class AppGetChatMessagesErrorState extends AppState {}
+
+class AppSendChatMessageLoadingState extends AppState {}
+
+class AppSendChatMessageSuccessState extends AppState {}
+
+class AppSendChatMessageErrorState extends AppState {}
