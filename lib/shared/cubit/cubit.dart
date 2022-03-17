@@ -7,20 +7,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:social_app/models/chat_room_model.dart';
+import 'package:social_app/models/fcm_message_model.dart';
 import 'package:social_app/models/post_model.dart';
 import 'package:social_app/models/user_model.dart';
 import 'package:social_app/modules/chats/all_chats_screen.dart';
-import 'package:social_app/modules/chats/chat_screen.dart';
 import 'package:social_app/modules/news_feed/news_feed_screen.dart';
 import 'package:social_app/modules/profile/profile_screen.dart';
 import 'package:social_app/modules/users/users_screen.dart';
 import 'package:social_app/modules/write_post/write_post_screen.dart';
+import 'package:social_app/shared/components/api_keys.dart';
 import 'package:social_app/shared/components/constants.dart';
 import 'package:social_app/shared/cubit/states.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'dart:io';
 
 import 'package:social_app/shared/network/local/cache_helper.dart';
+import 'package:social_app/shared/network/remote/dio_helper.dart';
 
 import '../../models/message_model.dart';
 
@@ -252,7 +254,6 @@ class AppCubit extends Cubit<AppState> {
   Future<void> createPost({
     required TextEditingController textContentController,
   }) async {
-    print('in createPost');
     //Allow posts that have text only or an image only or both (simplified condition using boolean algebra)
     if (!(textContentController.text.isNotEmpty ||
         (textContentController.text.isEmpty && pickedPostImage != null))) {
@@ -291,12 +292,10 @@ class AppCubit extends Cubit<AppState> {
               .exists;
           postIDs.insert(0, document.id);
           posts.insert(0, PostModel.fromJson(document.data()));
-          //print('$doesUserLikeDocExist');
           postLikedByUser.add(doesUserLikeDocExist);
         }
         lastLoadedPostDoc = postsCollection.docs.first;
         emit(AppGetNewsFeedPostsSuccessState());
-        //print('Exit :)');
       }).catchError((error) {
         print(error.toString());
         emit(AppGetNewsFeedPostsErrorState(error.toString()));
@@ -315,45 +314,16 @@ class AppCubit extends Cubit<AppState> {
               .exists;
           postIDs.add(document.id);
           posts.add(PostModel.fromJson(document.data()));
-          //print('$doesUserLikeDocExist');
           postLikedByUser.add(doesUserLikeDocExist);
         }
         lastLoadedPostDoc = postsCollection.docs.first;
         emit(AppGetNewsFeedPostsSuccessState());
-        //print('Exit :)');
       }).catchError((error) {
         print(error.toString());
         emit(AppGetNewsFeedPostsErrorState(error.toString()));
       });
     }
   }
-
-/*
-  void getNewsFeedPosts() {
-    FirebaseFirestore.instance.collection('posts').get().then((value) {
-      for (var document in value.docs) {
-        document.reference
-            .collection('likes')
-            .doc(userModel.uid)
-            .get()
-            .then((value) {
-          postIDs.add(document.id);
-          posts.add(PostModel.fromJson(document.data()));
-          print('${value.data()!['isLiked']}');
-          postLikedByUser.add(value.data()!['isLiked']);
-        }).catchError((error) {
-          print(error.toString());
-          emit(AppGetNewsFeedPostsErrorState(error.toString()));
-        });
-      }
-      emit(AppGetNewsFeedPostsSuccessState());
-      print('Exit :)');
-    }).catchError((error) {
-      print(error.toString());
-      emit(AppGetNewsFeedPostsErrorState(error.toString()));
-    });
-  }
-*/
 
   Future<void> changeReactionOnPost({
     required int postIndex,
@@ -366,17 +336,10 @@ class AppCubit extends Cubit<AppState> {
       var postDocReference = FirebaseFirestore.instance
           .collection('posts')
           .doc(postIDs[postIndex]);
-      /*await postDocReference
-          .collection('likes')
-          .doc(userModel.uid)
-          .set({'isLiked': !wasLiked});*/
       var userLikeDoc = postDocReference.collection('likes').doc(userModel.uid);
       wasLiked
           ? await userLikeDoc.delete()
           : await userLikeDoc.set(<String, dynamic>{});
-      /* await postDocReference.update({
-        'numOfLikes': posts[postIndex].numOfLikes,
-      });*/
       // Atomically change the value
       await postDocReference.update({
         'numOfLikes': FieldValue.increment(wasLiked ? -1 : 1),
@@ -466,39 +429,36 @@ class AppCubit extends Cubit<AppState> {
       lastMessageTexts[chatRoomIndex] =
           changedMessagesDocs.last.doc.data()!['text'];
       emit(AppGetChatMessagesSuccessState());
-      if (chatMessages.isNotEmpty) {
-        AudioCache player = AudioCache(prefix: 'assets/audio/');
-        await player.play(
-          'message_sound.mp3',
-        );
-      }
+      AudioCache player = AudioCache(prefix: 'assets/audio/');
+      await player.play(
+        'message_sound.mp3',
+      );
     });
-    /*try {
-      chatMessages = [];
-      print(chatRooms[chatRoomIndex].id);
-      var messagesDocs = await FirebaseFirestore.instance
-          .collection('chatRooms')
-          .doc(chatRooms[chatRoomIndex].id)
-          .collection('messages')
-          .orderBy('dateTime', descending: true)
-          .get();
-      print(messagesDocs.size);
-      for (var messagesDoc in messagesDocs.docs) {
-        chatMessages.add(MessageModel.fromJson(messagesDoc.data()));
-      }
-      //print(chatMessages);
-      emit(AppGetChatMessagesSuccessState());
-    } catch (e) {
-      print(e.toString());
-      emit(AppGetChatMessagesErrorState());
-    }*/
   }
 
-  Future<void> sendMessage({
+  Future<void> sendChatMessageNotification({
+    required String receiverToken,
+    required String notificationTitle,
+    required String notificationBody,
+  }) async {
+    DioHelper.dio.options.headers.addAll({
+      'Content-Type': 'application/json',
+      "Authorization": "key=$firebaseFcmApiKey"
+    });
+    await DioHelper.postFcmNotification(
+        notificationData: FcmMessageModel(
+      to: receiverToken,
+      notification: NotificationModel(
+        title: notificationTitle,
+        body: notificationBody,
+      ),
+    ).toMap());
+  }
+
+  Future<void> sendChatMessage({
     required int chatRoomIndex,
     required String text,
   }) async {
-    //TODO send message messes with its chatRoom document attributes
     try {
       var chatRoomDocRef = FirebaseFirestore.instance
           .collection('chatRooms')
@@ -517,7 +477,12 @@ class AppCubit extends Cubit<AppState> {
         'lastMessageRef': newMessageDocRef,
         'lastMessageDateTime': newMessageDateTime,
       });
-      //await getChatMessages(chatRoomIndex: chatRoomIndex);
+      await sendChatMessageNotification(
+        receiverToken:
+            'ffD97BMUSWy_kCpoJcD28I:APA91bEv46zDV0iQ-HSeoohyWR62Q0ebxIiGo_tPB3ie5oTLyE7UvkBIytz_Uc9Vf9NE7peow8iEWbDFUZp0X0ZonlCnTPu9Jd1gcL8ByFEptx1JNDLCoXYLRtEO4-JqeZL8Fqh5wg2g',
+        notificationTitle: 'Message from: ${userModel.name}',
+        notificationBody: text,
+      );
       emit(AppSendChatMessageSuccessState());
     } catch (e) {
       print(e.toString());

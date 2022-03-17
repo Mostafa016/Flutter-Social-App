@@ -12,7 +12,7 @@ class DioHelper {
     );
   }
 
-  static Future<Response> postNotification({
+  static Future<Response> postFcmNotification({
     String path = 'fcm/send',
     required Map<String, dynamic> notificationData,
   }) async {

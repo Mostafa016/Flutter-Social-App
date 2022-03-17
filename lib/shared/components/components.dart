@@ -251,16 +251,13 @@ Widget buildPost({
               child: Wrap(
                 children: [
                   hashtagTextButton(
-                    text: '#blessed',
+                    text: '#test',
                   ),
                   hashtagTextButton(
-                    text: '#live_love_laugh',
+                    text: '#a_hashtag',
                   ),
                   hashtagTextButton(
-                    text: '#stop_the_count',
-                  ),
-                  hashtagTextButton(
-                    text: '#china_virus_is_fake',
+                    text: '#this_is_a_very_long_tag',
                   ),
                 ],
               ),
@@ -285,12 +282,6 @@ Widget buildPost({
                             imageURL: post.postImage!,
                           ),
                         ),
-                        /*MaterialPageRoute(
-                          builder: (context) => DetailsScreen(
-                            imageURL: post.postImage!,
-                            heroTag: postImageHeroTag + index.toString(),
-                          ),
-                        ),*/
                       );
                     },
                     child: Container(
@@ -456,4 +447,3 @@ Widget buildPost({
         ),
       ),
     );
-

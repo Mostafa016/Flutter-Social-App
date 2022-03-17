@@ -1,10 +1,8 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_conditional_rendering/conditional.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:social_app/models/chat_room_model.dart';
 import 'package:social_app/shared/cubit/cubit.dart';
 import 'package:social_app/shared/cubit/states.dart';
 
@@ -25,6 +23,7 @@ class ChatScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Builder(builder: (context) {
+      print('Chat screen :)');
       AppCubit.get(context).getChatMessages(
         chatRoomIndex: chatRoomIndex,
       );
@@ -210,7 +209,7 @@ class _SendMessageTextBoxState extends State<SendMessageTextBox> {
           child: IconButton(
             onPressed: () async {
               AudioCache player = AudioCache(prefix: 'assets/audio/');
-              AppCubit.get(context).sendMessage(
+              AppCubit.get(context).sendChatMessage(
                 chatRoomIndex: widget.chatRoomIndex,
                 text: _messageTextFieldController.text,
               );
